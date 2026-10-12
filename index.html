@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="คิดเงินค่าไข่ตามเบอร์ สำหรับเขียนบิลเงินสด">
+<title>คิดเงินไข่</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="fonts/sarabun-latin-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/sarabun-thai-700.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  @font-face {
+    font-family: Sarabun; font-weight: 400; font-display: swap;
+    src: url(fonts/sarabun-thai-400.woff2) format("woff2");
+    unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+  }
+  @font-face {
+    font-family: Sarabun; font-weight: 700; font-display: swap;
+    src: url(fonts/sarabun-thai-700.woff2) format("woff2");
+    unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+  }
+  @font-face {
+    font-family: Sarabun; font-weight: 400; font-display: swap;
+    src: url(fonts/sarabun-latin-400.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: Sarabun; font-weight: 700; font-display: swap;
+    src: url(fonts/sarabun-latin-700.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+
+  :root {
+    --bg: #ffffff;
+    --ink: #111111;
+    --muted: #5f5f5f;
+    --dash: #a6a6a6;
+    --line: #dddddd;
+    --sel: #1d4ed8;
+    --sel-down: #163a9e;
+    --sel-row: #eef3ff;
+    --edit: #ffe066;
+    --edit-edge: #c99a00;
+    --warn: #c62828;
+    --key: #eceef1;
+    --key-down: #c3c9d2;
+    --undo: #d9480f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); }
+  body {
+    color: var(--ink);
+    font-family: Sarabun, "Noto Sans Thai", "Leelawadee UI", Tahoma, system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    overflow: hidden;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  .app {
+    height: 100vh;
+    height: 100dvh;
+    max-width: 520px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    padding: 0 12px env(safe-area-inset-bottom);
+  }
+
+  /* Header: date, or the yellow "editing price" warning. Same height either way, so nothing jumps. */
+  header {
+    flex: 0 0 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 -12px;
+    padding: env(safe-area-inset-top) 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  header.editing { background: var(--edit); border-bottom-color: var(--edit-edge); }
+  #title { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #newBill {
+    flex: 0 0 auto;
+    height: 46px;
+    min-width: 116px;
+    padding: 0 16px;
+    font-size: 23px;
+    font-weight: 700;
+    background: #fff;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+  }
+  #newBill.down { background: var(--key-down); }
+  #newBill.undo.down { background: #a8370b; }
+  #newBill.undo { background: var(--undo); border-color: var(--undo); color: #fff; }
+
+  /* Table */
+  .cols, .row {
+    display: grid;
+    grid-template-columns: 48px 1fr 1fr 1.5fr;
+    column-gap: 4px;
+  }
+  .cols > *, .row > * { display: flex; align-items: center; min-width: 0; }
+  .size { justify-content: center; }
+  .price, .amt { justify-content: flex-end; }
+  .qty { justify-content: center; }
+
+  .cols { flex: 0 0 34px; font-size: 19px; color: var(--muted); }
+  .cols > * { padding: 0 11px; }
+  .cols > .size { padding: 0; }
+
+  /* Rows never shrink below 44px; on short screens the keypad gives up space instead. */
+  .rows { flex: 1 1 auto; min-height: calc(6 * 44px); display: flex; flex-direction: column; }
+  .row {
+    flex: 1 1 0;
+    min-height: 44px;
+    border-top: 1px solid var(--line);
+    font-size: 31px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .row.active { background: var(--sel-row); }
+  .row > .cell {
+    margin: 3px 0;
+    padding: 0 8px;
+    border: 3px solid transparent;
+    border-radius: 9px;
+    white-space: nowrap;
+  }
+  .qty.sel { border-color: var(--sel); background: #fff; }
+  .price.sel { border-color: var(--edit-edge); background: var(--edit); }
+  .empty { color: var(--dash); font-weight: 400; }
+  .row > .amt.long { font-size: 25px; }
+  .row > .amt.warn { color: var(--warn); font-size: 21px; }
+
+  /* Total */
+  .total {
+    flex: 0 0 74px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 3px solid var(--ink);
+  }
+  .count { font-size: 20px; line-height: 1.2; color: var(--muted); white-space: nowrap; }
+  .count b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .sum { font-size: 46px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
+  .sum.long { font-size: 36px; }
+  .sum .unit { font-size: 24px; }
+
+  /* Keypad */
+  .pad {
+    flex: 0 1 min(40vh, 330px);
+    flex: 0 1 min(40dvh, 330px);
+    min-height: 200px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    grid-template-areas:
+      "k7 k8 k9 bs"
+      "k4 k5 k6 up"
+      "k1 k2 k3 nx"
+      "k0 k0 cl nx";
+    gap: 8px;
+    padding: 8px 0 10px;
+  }
+  .pad button {
+    border: 0;
+    border-radius: 12px;
+    background: var(--key);
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .pad button.down { background: var(--key-down); }
+  .pad .cl { color: var(--warn); }
+  .pad .nav { font-size: 30px; }
+  .pad .nx {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--sel);
+    color: #fff;
+    font-size: 26px;
+  }
+  .pad .nx span { font-size: 30px; }
+  .pad .nx.down { background: var(--sel-down); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header id="header">
+    <div id="title"></div>
+    <button id="newBill" type="button">บิลใหม่</button>
+  </header>
+
+  <div class="cols" aria-hidden="true">
+    <div class="size">เบอร์</div>
+    <div class="price">ราคา</div>
+    <div class="qty">แผง</div>
+    <div class="amt">เงิน</div>
+  </div>
+  <div class="rows" id="rows"></div>
+
+  <div class="total">
+    <div class="count">รวม<br><b id="count"></b> แผง</div>
+    <div class="sum" id="sumBox"><span id="sum"></span> <span class="unit">บาท</span></div>
+  </div>
+
+  <div class="pad" id="pad">
+    <button type="button" data-k="7" style="grid-area:k7">7</button>
+    <button type="button" data-k="8" style="grid-area:k8">8</button>
+    <button type="button" data-k="9" style="grid-area:k9">9</button>
+    <button type="button" data-k="bs" style="grid-area:bs" class="nav" aria-label="ลบ">⌫</button>
+    <button type="button" data-k="4" style="grid-area:k4">4</button>
+    <button type="button" data-k="5" style="grid-area:k5">5</button>
+    <button type="button" data-k="6" style="grid-area:k6">6</button>
+    <button type="button" data-k="up" style="grid-area:up" class="nav" aria-label="ขึ้น">▲</button>
+    <button type="button" data-k="1" style="grid-area:k1">1</button>
+    <button type="button" data-k="2" style="grid-area:k2">2</button>
+    <button type="button" data-k="3" style="grid-area:k3">3</button>
+    <button type="button" data-k="down" style="grid-area:nx" class="nx">ถัดไป<span>▼</span></button>
+    <button type="button" data-k="0" style="grid-area:k0">0</button>
+    <button type="button" data-k="c" style="grid-area:cl" class="cl">C</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const SIZES = 6;
+  const MAX = { qty: 999, price: 9999 };
+  const STORAGE_KEY = "khai:v1";
+  const UNDO_MS = 10000;
+  // Ignore taps on เอาคืน right after it appears, so a double-tap on บิลใหม่ doesn't undo itself.
+  const UNDO_GUARD_MS = 600;
+
+  const fmt = new Intl.NumberFormat("en-US");
+
+  const state = {
+    prices: Array(SIZES).fill(0),
+    qty: Array(SIZES).fill(0),
+    col: "qty",   // "qty" | "price"
+    row: 0,
+    fresh: true,  // next digit replaces the cell instead of appending
+  };
+  let undo = null;
+  let undoTimer = 0;
+  let undoShownAt = 0;
+
+  // ---------- storage ----------
+
+  function load() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!s) return;
+      const valid = (a, max) => Array.isArray(a) && a.length === SIZES &&
+        a.every((n) => Number.isInteger(n) && n >= 0 && n <= max);
+      if (valid(s.prices, MAX.price)) state.prices = s.prices;
+      if (valid(s.qty, MAX.qty)) state.qty = s.qty;
+      if (s.col === "qty" || s.col === "price") state.col = s.col;
+      if (Number.isInteger(s.row) && s.row >= 0 && s.row < SIZES) state.row = s.row;
+    } catch (e) { /* storage unavailable or corrupt: start empty */ }
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        prices: state.prices, qty: state.qty, col: state.col, row: state.row,
+      }));
+    } catch (e) { /* keep working for this session */ }
+  }
+
+  // ---------- view ----------
+
+  const $ = (id) => document.getElementById(id);
+  const headerEl = $("header");
+  const titleEl = $("title");
+  const newBillEl = $("newBill");
+  const rowsEl = $("rows");
+  const countEl = $("count");
+  const sumEl = $("sum");
+  const sumBoxEl = $("sumBox");
+  const padEl = $("pad");
+
+  const cells = [];
+  for (let i = 0; i < SIZES; i++) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.dataset.row = String(i);
+    row.innerHTML =
+      `<div class="size">${i}</div>` +
+      `<div class="cell price"></div>` +
+      `<div class="cell qty"></div>` +
+      `<div class="cell amt"></div>`;
+    rowsEl.append(row);
+    cells.push({ row, price: row.children[1], qty: row.children[2], amt: row.children[3] });
+  }
+
+  function thaiDate() {
+    const d = new Date();
+    const two = (n) => String(n).padStart(2, "0");
+    return `${two(d.getDate())}/${two(d.getMonth() + 1)}/${two((d.getFullYear() + 543) % 100)}`;
+  }
+
+  function showNumber(el, n) {
+    el.textContent = n > 0 ? fmt.format(n) : "–";
+    el.classList.toggle("empty", n === 0);
+  }
+
+  function render() {
+    let totalQty = 0;
+    let total = 0;
+
+    for (let i = 0; i < SIZES; i++) {
+      const c = cells[i];
+      const p = state.prices[i];
+      const q = state.qty[i];
+      const amount = p * q;
+
+      showNumber(c.price, p);
+      showNumber(c.qty, q);
+
+      c.amt.classList.remove("empty", "warn", "long");
+      if (q === 0) {
+        c.amt.textContent = "–";
+        c.amt.classList.add("empty");
+      } else if (p === 0) {
+        c.amt.textContent = "ใส่ราคา";
+        c.amt.classList.add("warn");
+      } else {
+        c.amt.textContent = fmt.format(amount);
+        c.amt.classList.toggle("long", amount >= 1e6);
+      }
+
+      totalQty += q;
+      total += amount;
+
+      const active = i === state.row;
+      c.row.classList.toggle("active", active);
+      c.qty.classList.toggle("sel", active && state.col === "qty");
+      c.price.classList.toggle("sel", active && state.col === "price");
+    }
+
+    countEl.textContent = fmt.format(totalQty);
+    sumEl.textContent = fmt.format(total);
+    sumBoxEl.classList.toggle("long", total >= 1e7);
+
+    const editingPrice = state.col === "price";
+    headerEl.classList.toggle("editing", editingPrice);
+    titleEl.textContent = editingPrice ? `กำลังแก้ราคา เบอร์ ${state.row}` : thaiDate();
+
+    newBillEl.textContent = undo ? "เอาคืน" : "บิลใหม่";
+    newBillEl.classList.toggle("undo", !!undo);
+  }
+
+  function commit() {
+    render();
+    save();
+  }
+
+  // ---------- actions ----------
+
+  function select(col, row) {
+    state.col = col;
+    state.row = row;
+    state.fresh = true;
+  }
+
+  function activeValues() {
+    return state.col === "qty" ? state.qty : state.prices;
+  }
+
+  function typeDigit(d) {
+    const values = activeValues();
+    const next = (state.fresh ? 0 : values[state.row]) * 10 + d;
+    if (next <= MAX[state.col]) values[state.row] = next;
+    state.fresh = false;
+  }
+
+  function backspace() {
+    const values = activeValues();
+    values[state.row] = Math.floor(values[state.row] / 10);
+    state.fresh = false;
+  }
+
+  function clearCell() {
+    activeValues()[state.row] = 0;
+    state.fresh = false;
+  }
+
+  function move(delta) {
+    select(state.col, Math.min(SIZES - 1, Math.max(0, state.row + delta)));
+  }
+
+  function endUndo() {
+    undo = null;
+    clearTimeout(undoTimer);
+  }
+
+  function newBill() {
+    if (undo) {
+      if (Date.now() - undoShownAt < UNDO_GUARD_MS) return;
+      state.qty = undo.qty;
+      select(undo.col, undo.row);
+      endUndo();
+      return;
+    }
+    if (state.qty.some((q) => q > 0)) {
+      undo = { qty: state.qty.slice(), col: state.col, row: state.row };
+      undoShownAt = Date.now();
+      undoTimer = setTimeout(() => { endUndo(); render(); }, UNDO_MS);
+    }
+    state.qty = Array(SIZES).fill(0);
+    select("qty", 0);
+  }
+
+  function press(key) {
+    if (undo) endUndo();
+    if (/^\d$/.test(key)) typeDigit(Number(key));
+    else if (key === "bs") backspace();
+    else if (key === "c") clearCell();
+    else if (key === "up") move(-1);
+    else if (key === "down") move(1);
+    commit();
+  }
+
+  function buzz() {
+    try { if (navigator.vibrate) navigator.vibrate(10); } catch (e) { /* unsupported */ }
+  }
+
+  // ---------- input ----------
+
+  padEl.addEventListener("pointerdown", (e) => {
+    const btn = e.target.closest("button[data-k]");
+    if (!btn) return;
+    e.preventDefault();
+    buzz();
+    btn.classList.add("down");
+    press(btn.dataset.k);
+  });
+  const release = () => {
+    for (const btn of padEl.querySelectorAll(".down")) btn.classList.remove("down");
+  };
+  padEl.addEventListener("pointerup", release);
+  padEl.addEventListener("pointercancel", release);
+  padEl.addEventListener("pointerleave", release);
+
+  rowsEl.addEventListener("pointerdown", (e) => {
+    const row = e.target.closest(".row");
+    if (!row) return;
+    e.preventDefault();
+    buzz();
+    select(e.target.closest(".price") ? "price" : "qty", Number(row.dataset.row));
+    commit();
+  });
+
+  // Manual pressed state: :active sticks on Android once the keypad cancels pointer defaults.
+  newBillEl.addEventListener("pointerdown", () => newBillEl.classList.add("down"));
+  for (const type of ["pointerup", "pointercancel", "pointerleave"]) {
+    newBillEl.addEventListener(type, () => newBillEl.classList.remove("down"));
+  }
+  newBillEl.addEventListener("click", () => {
+    buzz();
+    newBill();
+    commit();
+  });
+
+  // Physical keyboard, handy when testing on a computer.
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      if (undo) endUndo();
+      select(e.key === "ArrowLeft" ? "price" : "qty", state.row);
+      commit();
+      return;
+    }
+    const map = { Backspace: "bs", Delete: "c", Escape: "c", ArrowUp: "up", ArrowDown: "down", Enter: "down" };
+    const key = /^\d$/.test(e.key) ? e.key : map[e.key];
+    if (!key) return;
+    e.preventDefault();
+    press(key);
+  });
+
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+  // ---------- keep screen on ----------
+
+  let wakeLock = null;
+  async function keepAwake() {
+    if (wakeLock || !("wakeLock" in navigator) || document.visibilityState !== "visible") return;
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => { wakeLock = null; });
+    } catch (e) { /* denied or unsupported: screen just times out normally */ }
+  }
+  document.addEventListener("visibilitychange", () => {
+    keepAwake();
+    if (document.visibilityState === "visible") render();
+  });
+  document.addEventListener("pointerdown", keepAwake);
+
+  // Keep the date right if the app stays open past midnight.
+  setInterval(render, 30000);
+
+  load();
+  render();
+  keepAwake();
+})();
+</script>
+</body>
+</html>
