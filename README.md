@@ -2,6 +2,8 @@
 
 One-screen calculator for writing egg cash bills (เบอร์ 0–5, priced per แผง). See [REQUIREMENTS.md](REQUIREMENTS.md).
 
+**Live:** https://poomchantara.github.io/khai-calculator/
+
 Plain static files — no build step, no dependencies.
 
 ## Run locally
