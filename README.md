@@ -23,8 +23,10 @@ On a computer you can also use the keyboard: digits, Backspace, Delete/Esc (C), 
 
 ## Install on Dad's phone
 
-1. Open the URL in Chrome on the phone.
-2. Menu ⋮ → *Add to Home screen* / *Install app* → name stays “คิดเงินไข่”.
+1. Open the URL on the phone. A link tapped in LINE hands itself over to the phone's default browser (Samsung Internet or Chrome), because LINE's own browser hides the bottom keys.
+2. Add it to the home screen. In Samsung Internet: menu ≡ → *Add page to* → *Home screen*. In Chrome: menu ⋮ → *Add to Home screen* / *Install app*. The name stays “คิดเงินไข่”.
 3. Open from the 🥚 icon; it runs full-screen.
 
-Prices and the current bill are stored only on that phone (`localStorage`, key `khai:v1`). Clearing Chrome's site data resets them.
+The layout scales to any phone and ignores the phone's font-size setting, which only made text overlap; the app's text is already large.
+
+Prices and the current bill are stored only on that phone, in that browser (`localStorage`, key `khai:v1`). Clearing the browser's site data resets them.

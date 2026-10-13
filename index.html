@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="only light">
 <meta name="description" content="คิดเงินค่าไข่ตามเบอร์ สำหรับเขียนบิลเงินสด">
 <title>คิดเงินไข่</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -48,7 +49,20 @@
     --key: #eceef1;
     --key-down: #c3c9d2;
     --undo: #d9480f;
+
+    --vh: 100vh;
+    --bar: 0px;  /* LINE's in-app browser draws its toolbar over the bottom of the page */
+    /* One design pixel. The screen is drawn for 412 × 720 and scaled to fit, so nothing falls off a smaller phone. */
+    --u: min(
+      calc(min(100vw, 520px) / 412),
+      calc((var(--vh) - var(--bar) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) / 720)
+    );
+    /* One design pixel of text. --fs undoes the phone's font-size setting (set from JS). */
+    --fs: 1;
+    --t: calc(var(--u) * var(--fs));
   }
+  @supports (height: 100dvh) { :root { --vh: 100dvh; } }
+  html.line { --bar: 56px; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--bg); }
@@ -65,178 +79,206 @@
     overscroll-behavior: none;
     overflow: hidden;
   }
-  button { font: inherit; color: inherit; cursor: pointer; }
+  button { font: inherit; color: inherit; cursor: pointer; padding: 0; }
+  /* --fit is set from JS only when text is still wider or taller than its box. */
+  .fit { white-space: nowrap; }
 
   .app {
-    height: 100vh;
-    height: 100dvh;
+    height: var(--vh);
     max-width: 520px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    padding: 0 12px env(safe-area-inset-bottom);
+    padding: 0 calc(12 * var(--u)) calc(env(safe-area-inset-bottom, 0px) + var(--bar));
   }
+  /* Boxes take their size from the layout, never from their text; fitText() shrinks text to the box. */
+  .app > * { min-height: 0; }
 
   /* Header: date, or the yellow "editing price" warning. Same height either way, so nothing jumps. */
   header {
-    flex: 0 0 60px;
+    flex: 0 0 calc(52 * var(--u) + env(safe-area-inset-top, 0px));
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 0 -12px;
-    padding: env(safe-area-inset-top) 12px 0;
+    align-items: stretch;
+    gap: calc(8 * var(--u));
+    margin: 0 calc(-12 * var(--u));
+    padding: env(safe-area-inset-top, 0px) calc(12 * var(--u)) 0;
     border-bottom: 1px solid var(--line);
   }
   header.editing { background: var(--edit); border-bottom-color: var(--edit-edge); }
-  #title { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #title {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    font-size: calc(26 * var(--t) * var(--fit, 1));
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
   #newBill {
-    flex: 0 0 auto;
-    height: 46px;
-    min-width: 116px;
-    padding: 0 16px;
-    font-size: 23px;
+    flex: none;
+    align-self: center;
+    width: calc(116 * var(--u));
+    height: calc(44 * var(--u));
+    padding: 0 calc(8 * var(--u));
+    font-size: calc(23 * var(--t) * var(--fit, 1));
     font-weight: 700;
     background: #fff;
     border: 2px solid var(--ink);
-    border-radius: 10px;
+    border-radius: calc(10 * var(--u));
   }
   #newBill.down { background: var(--key-down); }
   #newBill.undo.down { background: #a8370b; }
   #newBill.undo { background: var(--undo); border-color: var(--undo); color: #fff; }
 
-  /* Table */
+  /* Table. Column shares are sized for 9,999 / 999 / 9,989,001 at full size. */
   .cols, .row {
     display: grid;
-    grid-template-columns: 48px 1fr 1fr 1.5fr;
-    column-gap: 4px;
+    grid-template-columns: minmax(0, 44fr) minmax(0, 100fr) minmax(0, 84fr) minmax(0, 148fr);
+    grid-template-rows: minmax(0, 1fr);
+    column-gap: calc(4 * var(--u));
   }
   .cols > *, .row > * { display: flex; align-items: center; min-width: 0; }
   .size { justify-content: center; }
   .price, .amt { justify-content: flex-end; }
   .qty { justify-content: center; }
 
-  .cols { flex: 0 0 34px; font-size: 19px; color: var(--muted); }
-  .cols > * { padding: 0 11px; }
+  .cols { flex: 0 0 calc(28 * var(--u)); color: var(--muted); }
+  .cols > * {
+    padding: 0 calc(3px + 7 * var(--u));
+    font-size: calc(18 * var(--t) * var(--fit, 1));
+  }
   .cols > .size { padding: 0; }
 
-  /* Rows never shrink below 44px; on short screens the keypad gives up space instead. */
-  .rows { flex: 1 1 auto; min-height: calc(6 * 44px); display: flex; flex-direction: column; }
+  .rows { flex: 1 1 calc(6 * 46 * var(--u)); min-height: 0; display: flex; flex-direction: column; }
   .row {
     flex: 1 1 0;
-    min-height: 44px;
+    min-height: 0;
     border-top: 1px solid var(--line);
-    font-size: 31px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }
+  .row > * { font-size: calc(31 * var(--t) * var(--fit, 1)); }
   .row.active { background: var(--sel-row); }
   .row > .cell {
-    margin: 3px 0;
-    padding: 0 8px;
+    margin: calc(3 * var(--u)) 0;
+    padding: 0 calc(7 * var(--u));
     border: 3px solid transparent;
-    border-radius: 9px;
-    white-space: nowrap;
+    border-radius: calc(9 * var(--u));
   }
   .qty.sel { border-color: var(--sel); background: #fff; }
   .price.sel { border-color: var(--edit-edge); background: var(--edit); }
   .empty { color: var(--dash); font-weight: 400; }
-  .row > .amt.long { font-size: 25px; }
-  .row > .amt.warn { color: var(--warn); font-size: 21px; }
+  .row > .amt.warn { color: var(--warn); font-size: calc(21 * var(--t) * var(--fit, 1)); }
 
   /* Total */
   .total {
-    flex: 0 0 74px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    flex: 0 0 calc(66 * var(--u));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: calc(8 * var(--u));
     border-top: 3px solid var(--ink);
   }
-  .count { font-size: 20px; line-height: 1.2; color: var(--muted); white-space: nowrap; }
+  .count, .sum { display: flex; align-items: center; }
+  .count {
+    font-size: calc(20 * var(--t) * var(--fit, 1));
+    line-height: 1.2;
+    color: var(--muted);
+  }
   .count b { color: var(--ink); font-variant-numeric: tabular-nums; }
-  .sum { font-size: 46px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
-  .sum.long { font-size: 36px; }
-  .sum .unit { font-size: 24px; }
+  .sum {
+    justify-content: flex-end;
+    font-size: calc(46 * var(--t) * var(--fit, 1));
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .sum .unit { font-size: calc(24 * var(--t) * var(--fit, 1)); }
 
   /* Keypad */
   .pad {
-    flex: 0 1 min(40vh, 330px);
-    flex: 0 1 min(40dvh, 330px);
-    min-height: 200px;
+    flex: 1 1 calc(298 * var(--u));
+    min-height: 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(0, 1fr));
     grid-template-areas:
       "k7 k8 k9 bs"
       "k4 k5 k6 up"
       "k1 k2 k3 nx"
       "k0 k0 cl nx";
-    gap: 8px;
-    padding: 8px 0 10px;
+    gap: calc(8 * var(--u));
+    padding: calc(8 * var(--u)) 0 calc(10 * var(--u));
   }
   .pad button {
+    min-width: 0;
     border: 0;
-    border-radius: 12px;
+    border-radius: calc(12 * var(--u));
     background: var(--key);
-    font-size: 38px;
+    font-size: calc(38 * var(--t) * var(--fit, 1));
     font-weight: 700;
     line-height: 1;
   }
   .pad button.down { background: var(--key-down); }
   .pad .cl { color: var(--warn); }
-  .pad .nav { font-size: 30px; }
+  .pad .nav { font-size: calc(30 * var(--t) * var(--fit, 1)); }
   .pad .nx {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: calc(6 * var(--u));
     background: var(--sel);
     color: #fff;
-    font-size: 26px;
+    font-size: calc(26 * var(--t) * var(--fit, 1));
   }
-  .pad .nx span { font-size: 30px; }
+  .pad .nx span { font-size: calc(30 * var(--t) * var(--fit, 1)); }
   .pad .nx.down { background: var(--sel-down); }
+
+  /* Measures how much the phone enlarges text: 100px tall unless the font-size setting changes it. */
+  .probe { flex: none; height: 0; overflow: hidden; visibility: hidden; }
+  #probe { font-size: 100px; line-height: 1; }
 </style>
 </head>
 <body>
 <div class="app">
   <header id="header">
-    <div id="title"></div>
-    <button id="newBill" type="button">บิลใหม่</button>
+    <div id="title" class="fit"></div>
+    <button id="newBill" type="button" class="fit">บิลใหม่</button>
   </header>
 
   <div class="cols" aria-hidden="true">
-    <div class="size">เบอร์</div>
-    <div class="price">ราคา</div>
-    <div class="qty">แผง</div>
-    <div class="amt">เงิน</div>
+    <div class="size fit">เบอร์</div>
+    <div class="price fit">ราคา</div>
+    <div class="qty fit">แผง</div>
+    <div class="amt fit">เงิน</div>
   </div>
   <div class="rows" id="rows"></div>
 
   <div class="total">
-    <div class="count">รวม<br><b id="count"></b> แผง</div>
-    <div class="sum" id="sumBox"><span id="sum"></span> <span class="unit">บาท</span></div>
+    <div class="count fit"><span>รวม<br><b id="count"></b> แผง</span></div>
+    <div class="sum fit"><span><span id="sum"></span> <span class="unit">บาท</span></span></div>
   </div>
 
   <div class="pad" id="pad">
-    <button type="button" data-k="7" style="grid-area:k7">7</button>
-    <button type="button" data-k="8" style="grid-area:k8">8</button>
-    <button type="button" data-k="9" style="grid-area:k9">9</button>
-    <button type="button" data-k="bs" style="grid-area:bs" class="nav" aria-label="ลบ">⌫</button>
-    <button type="button" data-k="4" style="grid-area:k4">4</button>
-    <button type="button" data-k="5" style="grid-area:k5">5</button>
-    <button type="button" data-k="6" style="grid-area:k6">6</button>
-    <button type="button" data-k="up" style="grid-area:up" class="nav" aria-label="ขึ้น">▲</button>
-    <button type="button" data-k="1" style="grid-area:k1">1</button>
-    <button type="button" data-k="2" style="grid-area:k2">2</button>
-    <button type="button" data-k="3" style="grid-area:k3">3</button>
-    <button type="button" data-k="down" style="grid-area:nx" class="nx">ถัดไป<span>▼</span></button>
-    <button type="button" data-k="0" style="grid-area:k0">0</button>
-    <button type="button" data-k="c" style="grid-area:cl" class="cl">C</button>
+    <button type="button" data-k="7" style="grid-area:k7" class="fit">7</button>
+    <button type="button" data-k="8" style="grid-area:k8" class="fit">8</button>
+    <button type="button" data-k="9" style="grid-area:k9" class="fit">9</button>
+    <button type="button" data-k="bs" style="grid-area:bs" class="nav fit" aria-label="ลบ">⌫</button>
+    <button type="button" data-k="4" style="grid-area:k4" class="fit">4</button>
+    <button type="button" data-k="5" style="grid-area:k5" class="fit">5</button>
+    <button type="button" data-k="6" style="grid-area:k6" class="fit">6</button>
+    <button type="button" data-k="up" style="grid-area:up" class="nav fit" aria-label="ขึ้น">▲</button>
+    <button type="button" data-k="1" style="grid-area:k1" class="fit">1</button>
+    <button type="button" data-k="2" style="grid-area:k2" class="fit">2</button>
+    <button type="button" data-k="3" style="grid-area:k3" class="fit">3</button>
+    <button type="button" data-k="down" style="grid-area:nx" class="nx fit">ถัดไป<span>▼</span></button>
+    <button type="button" data-k="0" style="grid-area:k0" class="fit">0</button>
+    <button type="button" data-k="c" style="grid-area:cl" class="cl fit">C</button>
   </div>
+
+  <div class="probe" aria-hidden="true"><div id="probe">0</div></div>
 </div>
 
 <script>
@@ -251,6 +293,24 @@
   const UNDO_GUARD_MS = 600;
 
   const fmt = new Intl.NumberFormat("en-US");
+
+  // ---------- LINE ----------
+
+  // LINE's in-app browser covers the keypad's bottom row with its toolbar. Ask LINE to hand the page
+  // to the phone's own browser; if it ignores that, leave room for the toolbar instead.
+  const EXTERNAL = "openExternalBrowser";
+  const url = new URL(location.href);
+  if (/\bLine\/\d/i.test(navigator.userAgent)) {
+    document.documentElement.classList.add("line");
+    if (!url.searchParams.has(EXTERNAL)) {
+      url.searchParams.set(EXTERNAL, "1");
+      location.replace(url.href);
+    }
+  } else if (url.searchParams.has(EXTERNAL)) {
+    // Drop the flag so Add to Home screen saves the plain address.
+    url.searchParams.delete(EXTERNAL);
+    history.replaceState(null, "", url.href);
+  }
 
   const state = {
     prices: Array(SIZES).fill(0),
@@ -295,8 +355,8 @@
   const rowsEl = $("rows");
   const countEl = $("count");
   const sumEl = $("sum");
-  const sumBoxEl = $("sumBox");
   const padEl = $("pad");
+  const probeEl = $("probe");
 
   const cells = [];
   for (let i = 0; i < SIZES; i++) {
@@ -304,12 +364,46 @@
     row.className = "row";
     row.dataset.row = String(i);
     row.innerHTML =
-      `<div class="size">${i}</div>` +
-      `<div class="cell price"></div>` +
-      `<div class="cell qty"></div>` +
-      `<div class="cell amt"></div>`;
+      `<div class="size fit">${i}</div>` +
+      `<div class="cell price fit"></div>` +
+      `<div class="cell qty fit"></div>` +
+      `<div class="cell amt fit"></div>`;
     rowsEl.append(row);
     cells.push({ row, price: row.children[1], qty: row.children[2], amt: row.children[3] });
+  }
+  const fitEls = [...document.querySelectorAll(".fit")];
+  const range = document.createRange();
+
+  // Android's font-size setting (which LINE's browser follows) enlarges text up to ~1.7× without
+  // growing the boxes around it. Measure the boost on a 100px probe and undo it.
+  function undoFontBoost() {
+    const boost = probeEl.getBoundingClientRect().height / 100;
+    if (!(boost > 0)) return;  // not laid out
+    const fs = Math.abs(boost - 1) < 0.02 ? 1 : 1 / Math.min(3, Math.max(0.5, boost));
+    document.documentElement.style.setProperty("--fs", fs.toFixed(3));
+  }
+
+  // Last guard: shrink any text that is still wider or taller than its box (huge amounts, a fallback
+  // font, a boost we couldn't measure). Reads all, then writes all, so it costs one extra layout.
+  function fitText() {
+    for (const el of fitEls) el.style.removeProperty("--fit");
+    // Text height per px of font size, to turn a measured text height back into a font size.
+    range.selectNodeContents(probeEl);
+    const textPerFont = range.getBoundingClientRect().height / probeEl.getBoundingClientRect().height || 1.3;
+    const scales = fitEls.map((el) => {
+      range.selectNodeContents(el);
+      const text = range.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const roomW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const roomH = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const font = text.height / textPerFont;
+      return Math.max(0.3, Math.min(1,
+        text.width > roomW ? (roomW / text.width) * 0.97 : 1,
+        font > roomH + 1 ? roomH / font : 1));
+    });
+    fitEls.forEach((el, i) => {
+      if (scales[i] < 1) el.style.setProperty("--fit", scales[i].toFixed(3));
+    });
   }
 
   function thaiDate() {
@@ -336,7 +430,7 @@
       showNumber(c.price, p);
       showNumber(c.qty, q);
 
-      c.amt.classList.remove("empty", "warn", "long");
+      c.amt.classList.remove("empty", "warn");
       if (q === 0) {
         c.amt.textContent = "–";
         c.amt.classList.add("empty");
@@ -345,7 +439,6 @@
         c.amt.classList.add("warn");
       } else {
         c.amt.textContent = fmt.format(amount);
-        c.amt.classList.toggle("long", amount >= 1e6);
       }
 
       totalQty += q;
@@ -359,7 +452,6 @@
 
     countEl.textContent = fmt.format(totalQty);
     sumEl.textContent = fmt.format(total);
-    sumBoxEl.classList.toggle("long", total >= 1e7);
 
     const editingPrice = state.col === "price";
     headerEl.classList.toggle("editing", editingPrice);
@@ -367,6 +459,8 @@
 
     newBillEl.textContent = undo ? "เอาคืน" : "บิลใหม่";
     newBillEl.classList.toggle("undo", !!undo);
+
+    fitText();
   }
 
   function commit() {
@@ -512,14 +606,19 @@
   }
   document.addEventListener("visibilitychange", () => {
     keepAwake();
-    if (document.visibilityState === "visible") render();
+    if (document.visibilityState === "visible") { undoFontBoost(); render(); }
   });
   document.addEventListener("pointerdown", keepAwake);
 
   // Keep the date right if the app stays open past midnight.
   setInterval(render, 30000);
 
+  addEventListener("resize", () => { undoFontBoost(); render(); });
+  // Sarabun arrives after the first paint and is narrower or wider than the fallback.
+  if (document.fonts) document.fonts.addEventListener("loadingdone", render);
+
   load();
+  undoFontBoost();
   render();
   keepAwake();
 })();

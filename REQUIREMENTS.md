@@ -27,7 +27,7 @@ Replace the physical calculator Dad uses when writing paper cash bills (บิ�
 
 ## Screen
 
-There is a single screen with no navigation and no settings page. It must fit on the A57 **without scrolling**, both in a browser tab and when launched from the home screen.
+There is a single screen with no navigation and no settings page. It must fit on the A57 **without scrolling**, both in a browser tab and when launched from the home screen. It must also fit on any other modern phone (320 px wide and up, so employees can use it), including with the phone's font size set to maximum.
 
 ```
  12/10/69                              [บิลใหม่]
@@ -90,21 +90,24 @@ There is a single screen with no navigation and no settings page. It must fit on
 - Light theme only: white background, near-black text, no dark mode.
 - Active แผง cell: thick blue outline. Active price cell: bright yellow fill.
 - Font: **Sarabun**, self-hosted woff2, with the system Thai font as fallback. Numbers are right-aligned and use `tabular-nums`.
-- Minimum sizes:
-  - Row text ≥ 28px
-  - Total ≥ 44px
-  - Keypad digits ≥ 32px
-  - Keys ≥ 64px tall
-- Height budget (CSS px, viewport about 412 × 850+). On shorter screens the keypad shrinks (down to 200px) and the rows stay at least 44px tall:
+- The screen is designed for **412 × 720 CSS px** (the A57 in a browser tab). Every size (boxes, gaps and text) is scaled by `min(width / 412, height / 720)`, so the whole design always fits. Extra height on taller screens goes to the rows and the keypad.
 
-  | Part | Height |
+  | Part | Design height |
   |---|---|
-  | Header | 48 |
-  | Column labels | 32 |
-  | Rows (6 × 56) | 336 |
-  | Total | 72 |
-  | Keypad (4 × 72) | 288 |
-  | **Sum** | **≈ 776** |
+  | Header | 52 |
+  | Column labels | 28 |
+  | Rows (6 × 46) | 276 |
+  | Total | 66 |
+  | Keypad (4 × 64 keys + gaps) | 298 |
+  | **Sum** | **720** |
+
+- Sizes at the design size, smaller in proportion on shorter or narrower screens:
+  - Row text 31px
+  - Total 46px
+  - Keypad digits 38px
+  - Keys 64px tall
+- **Phone font size:** Android's font-size setting (which LINE's browser follows) enlarges web text by up to ~1.7× without enlarging the boxes, so text overlaps. The app measures this boost on a hidden 100px probe and undoes it. The text is already sized for reading glasses, and every phone shows the same layout.
+- **Fit guard:** after every render, any text still wider or taller than its box (very long amounts, a fallback font, a boost that couldn't be measured) shrinks to fit. Boxes never grow to fit their text.
 
 - Zero motion:
   - No transitions, animations, hover effects or ripple effects
@@ -125,6 +128,8 @@ There is a single screen with no navigation and no settings page. It must fit on
   - `orientation: portrait`
   - 🥚 icon on a solid background colour
 - No service worker in v1. It avoids stale-version problems after updates, and Dad has internet. Add one later if launch feels slow.
+- **LINE's in-app browser** draws its bottom toolbar over the page and hides the keypad's last row. When opened inside LINE (user agent contains `Line/`), the app reloads once with `?openExternalBrowser=1`, which asks LINE to open the phone's default browser (Samsung Internet on Dad's phone). If LINE stays, the app leaves 56px free under the keypad. Outside LINE the flag is removed from the address, so Add to Home screen saves the plain URL.
+- `<meta name="color-scheme" content="only light">` stops browser dark modes from recolouring the page.
 - Hosting: **GitHub Pages** from a public repo, at `https://poomchantara.github.io/khai-calculator/`. The repo holds no data, because prices live only on the phone.
 - Install: open the URL on Dad's phone, then use Add to Home screen.
 
@@ -137,6 +142,9 @@ There is a single screen with no navigation and no settings page. It must fit on
 5. Tapping a price shows the yellow cell and the yellow `กำลังแก้ราคา` header. ▼ from a price moves to the next price, and from a แผง cell to the next แผง.
 6. On the A57, there is no scrolling in either Chrome or Samsung Internet, as a tab or from the home screen.
 7. The screen stays on while the app is open.
+8. With Android's font size at maximum, the screen looks the same as at the default size. No text overlaps or leaves its box.
+9. Tapping the link in a LINE chat opens the app in the phone's default browser. If it stays inside LINE, the 0 and C keys are fully visible.
+10. From 320 × 460 up to tablet size, nothing falls off the screen, even with 9,999 × 999 on every row.
 
 ## Decisions & alternatives considered
 
@@ -148,6 +156,8 @@ There is a single screen with no navigation and no settings page. It must fit on
 | Price edit guard | Loud yellow highlight and status bar | Long-press (hard to discover); edit-mode toggle (extra taps) |
 | Clear safety | Instant clear with 10 s undo | Confirm dialog (slows every bill); no undo |
 | History | None | Today's list plus daily total (v2 candidate) |
+| Phone font size | Measure the boost and undo it; scale the design to the screen | Keep the boost and shrink each group to fit (sizes would differ from phone to phone) |
+| LINE in-app browser | Hand off to the default browser, with toolbar room as fallback | Only reserve toolbar room; ignore LINE |
 
 ## v2 candidates
 
